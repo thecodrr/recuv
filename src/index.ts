@@ -50,11 +50,74 @@ async function main() {
       ({ ...JSON.parse(contents), sourceFilePath: path } as File)
   );
 
-  // const allPaths = files.map((a) => a.resource);
-  // while (true) {
+  await start({ files });
+}
 
-  const { file } = (await prompts({
+main();
+
+type CLIState = {
+  files: File[];
+  selectedFile?: File;
+  version?: Entry;
+};
+
+async function start(state: CLIState): Promise<void> {
+  state.selectedFile = state.selectedFile || (await getFile(state.files));
+  if (!state.selectedFile) return;
+
+  state.version = state.version || (await getVersion(state.selectedFile));
+  if (!state.version) return;
+
+  const { files, selectedFile, version } = state;
+
+  const action = await getAction(selectedFile);
+  if (!action) return;
+
+  const versionContents = await readFile(
+    path.join(path.dirname(selectedFile.sourceFilePath), version.id),
+    "utf8"
+  );
+
+  switch (action) {
+    case "restore":
+      await mkdir(path.dirname(selectedFile.resource.replace("file://", "")), {
+        recursive: true,
+      });
+      await writeFile(
+        selectedFile.resource.replace("file://", ""),
+        versionContents
+      );
+      return await start({ files });
+    case "save":
+      await writeFile(path.basename(selectedFile.resource), versionContents);
+      break;
+    case "preview":
+      if (process.env.EDITOR) {
+        await tempy.write.task(
+          versionContents,
+          (path) => {
+            if (!process.env.EDITOR) return;
+            spawnSync(process.env.EDITOR, [path], { stdio: "inherit" });
+          },
+          {
+            name: path.basename(selectedFile.resource),
+          }
+        );
+      } else {
+        console.log(highlight(versionContents));
+      }
+      return await start(state);
+    case "restart":
+      return await start({ files });
+    case "choose-version":
+      return await start({ files, selectedFile });
+  }
+}
+
+async function getFile(files: File[]): Promise<File | undefined> {
+  const { file } = await prompts({
     type: "autocomplete",
+    limit: 5,
     name: "file",
     message: "Choose a file",
     choices: files.map((file) => ({
@@ -67,12 +130,16 @@ async function main() {
           c.value?.resource?.toLowerCase().includes(input.toLowerCase())
         )
       ),
-  })) as { file: File };
+  });
+  return file;
+}
 
-  const { version } = (await prompts({
+async function getVersion(file: File): Promise<Entry | undefined> {
+  const { version } = await prompts({
     type: "select",
     name: "version",
     message: "Choose a file version",
+    limit: 5,
     choices: () => {
       file.entries.sort((a, b) => b.timestamp - a.timestamp);
       return file.entries.map((e) => ({
@@ -80,100 +147,48 @@ async function main() {
         value: e,
       }));
     },
-  })) as { version: Entry };
+  });
+  return version;
+}
 
-  const { action } = (await prompts({
+async function getAction(
+  selectedFile: File
+): Promise<
+  "restore" | "save" | "preview" | "restart" | "choose-version" | undefined
+> {
+  const { action } = await prompts({
     type: "select",
     name: "action",
     message: "Choose",
     choices: [
-      { title: "Restore", value: "restore" },
-      { title: "Save here", value: "save" },
-      { title: "Preview", value: "preview" },
-      { title: "Start over", value: "restart" },
-      { title: "Choose a different version", value: "choose-version" },
+      {
+        title: "Restore",
+        value: "restore",
+        description: `Restore selected version to ${selectedFile.resource}`,
+      },
+      {
+        title: "Save here",
+        value: "save",
+        description: `Save selected version to ${process.cwd()}`,
+      },
+      {
+        title: "Preview",
+        value: "preview",
+        description: `Preview selected version in ${
+          process.env.EDITOR || "terminal"
+        }`,
+      },
+      {
+        title: "Start over",
+        value: "restart",
+        description: "Go back to selecting file",
+      },
+      {
+        title: "Choose a different version",
+        value: "choose-version",
+        description: "Go back to selecting version",
+      },
     ],
-  })) as { action: string };
-
-  // const selectedFile = files.find((f) => f.resource === selectedFilePath);
-  // if (!selectedFile) {
-  //   console.error("Please select a valid file.");
-  //   return;
-  // }
-  // selectedFile.entries.sort((a, b) => b.timestamp - a.timestamp);
-
-  // const { selectedVersion } = await inquirer.prompt([
-  //   {
-  //     type: "list",
-  //     name: "selectedVersion",
-  //     message: "Choose a file version",
-  //     choices: selectedFile.entries.map((e) =>
-  //       new Date(e.timestamp).toISOString()
-  //     ),
-  //     pageSize: 5,
-  //   },
-  // ]);
-
-  // const version = selectedFile.entries.find(
-  //   (e) => new Date(e.timestamp).toISOString() === selectedVersion
-  // );
-  // if (!version) {
-  //   console.log("Invalid version.");
-  //   return;
-  // }
-
-  // actionLoop: while (true) {
-  //   const { action } = await inquirer.prompt([
-  //     {
-  //       type: "list",
-  //       name: "action",
-  //       message: "What do you want to do?",
-  //       choices: ["Restore", "Save here", "Preview", "Start over"],
-  //       pageSize: 5,
-  //     },
-  //   ]);
-
-  //   const versionContents = await readFile(
-  //     path.join(path.dirname(selectedFile.sourceFilePath), version.id),
-  //     "utf8"
-  //   );
-  //   switch (action) {
-  //     case "Restore":
-  //       await mkdir(
-  //         path.dirname(selectedFile.resource.replace("file://", "")),
-  //         { recursive: true }
-  //       );
-  //       await writeFile(
-  //         selectedFile.resource.replace("file://", ""),
-  //         versionContents
-  //       );
-  //       break actionLoop;
-  //     case "Save here":
-  //       await writeFile(
-  //         path.basename(selectedFile.resource),
-  //         versionContents
-  //       );
-  //       break;
-  //     case "Preview":
-  //       if (process.env.EDITOR) {
-  //         await tempy.write.task(
-  //           versionContents,
-  //           (path) => {
-  //             if (!process.env.EDITOR) return;
-  //             spawnSync(process.env.EDITOR, [path], { stdio: "inherit" });
-  //           },
-  //           {
-  //             name: path.basename(selectedFile.resource),
-  //           }
-  //         );
-  //       } else {
-  //         console.log(highlight(versionContents));
-  //       }
-  //       break;
-  //     case "Start over":
-  //       break actionLoop;
-  //   }
-  // }
-  // }
+  });
+  return action;
 }
-main();
