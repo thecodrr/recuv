@@ -1,4 +1,6 @@
-import { fdir, Output } from "fdir";
+#!/usr/bin/env node
+
+import { fdir } from "fdir";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import prompts from "prompts";
 import { highlight } from "cli-highlight";
@@ -32,7 +34,6 @@ const ROAMING_DIR_PATH =
 const HISTORY_DIR_PATH = path.join(ROAMING_DIR_PATH, "Code", "User", "History");
 
 async function main() {
-  console.log("Searching ", HISTORY_DIR_PATH, "for files...");
   const files = (
     await Promise.all(
       (
@@ -45,12 +46,11 @@ async function main() {
         return { path, contents: await readFile(path, "utf8") };
       })
     )
-  ).map(
-    ({ path, contents }) =>
-      ({ ...JSON.parse(contents), sourceFilePath: path } as File)
-  );
+  ).map(({ path, contents }) => {
+    return { ...JSON.parse(contents), sourceFilePath: path } as File;
+  });
 
-  await start({ files });
+  await restore({ files });
 }
 
 main();
@@ -61,7 +61,7 @@ type CLIState = {
   version?: Entry;
 };
 
-async function start(state: CLIState): Promise<void> {
+async function restore(state: CLIState): Promise<void> {
   state.selectedFile = state.selectedFile || (await getFile(state.files));
   if (!state.selectedFile) return;
 
@@ -87,7 +87,7 @@ async function start(state: CLIState): Promise<void> {
         selectedFile.resource.replace("file://", ""),
         versionContents
       );
-      return await start({ files });
+      return await restore({ files });
     case "save":
       await writeFile(path.basename(selectedFile.resource), versionContents);
       break;
@@ -106,11 +106,11 @@ async function start(state: CLIState): Promise<void> {
       } else {
         console.log(highlight(versionContents));
       }
-      return await start(state);
+      return await restore(state);
     case "restart":
-      return await start({ files });
+      return await restore({ files });
     case "choose-version":
-      return await start({ files, selectedFile });
+      return await restore({ files, selectedFile });
   }
 }
 
@@ -121,7 +121,7 @@ async function getFile(files: File[]): Promise<File | undefined> {
     name: "file",
     message: "Choose a file",
     choices: files.map((file) => ({
-      title: file.resource.replace("file://", ""),
+      title: normalizePath(file.resource),
       value: file,
     })),
     suggest: (input, choices) =>
@@ -135,6 +135,7 @@ async function getFile(files: File[]): Promise<File | undefined> {
 }
 
 async function getVersion(file: File): Promise<Entry | undefined> {
+  const locale = Intl.DateTimeFormat().resolvedOptions().locale;
   const { version } = await prompts({
     type: "select",
     name: "version",
@@ -143,7 +144,16 @@ async function getVersion(file: File): Promise<Entry | undefined> {
     choices: () => {
       file.entries.sort((a, b) => b.timestamp - a.timestamp);
       return file.entries.map((e) => ({
-        title: new Date(e.timestamp).toISOString(),
+        title: new Date(e.timestamp).toLocaleString(locale, {
+          year: "numeric",
+          day: "2-digit",
+          month: "2-digit",
+          hour: "2-digit",
+          hour12: true,
+          minute: "2-digit",
+          second: "2-digit",
+        }),
+        description: daysSince(e.timestamp),
         value: e,
       }));
     },
@@ -191,4 +201,23 @@ async function getAction(
     ],
   });
   return action;
+}
+
+function normalizePath(filePath: string): string {
+  filePath = decodeURIComponent(filePath);
+  filePath = filePath.replace("file:///", "");
+  if (process.platform !== "win32") filePath = `/${filePath}`;
+  else filePath = `${filePath[0].toUpperCase()}${filePath.slice(1)}`;
+
+  return path.normalize(filePath);
+}
+
+function daysSince(timestamp: number) {
+  const MILLISECONDS_IN_DAY = 86400000;
+  const daysSince = Math.round((Date.now() - timestamp) / MILLISECONDS_IN_DAY);
+  return daysSince === 0
+    ? "today"
+    : daysSince > 1
+    ? `${daysSince} days ago`
+    : `${daysSince} day ago`;
 }
