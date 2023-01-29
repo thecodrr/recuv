@@ -2,6 +2,8 @@
 
 <p align="center">Go back in time and recover any file you once edited in VSCode.</p>
 
+<p align="center"><img src="assets/demo.gif" width="612" /></p>
+
 <details>
 <summary>Read the backstory behind recuv</summary>
 
