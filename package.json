@@ -1,7 +1,7 @@
 {
   "name": "recuv",
   "version": "1.0.0",
-  "description": "Recovers code you thought you lost.",
+  "description": "Go back in time and recover any file you once edited in VSCode.",
   "main": "dist/index.js",
   "bin": "dist/index.js",
   "scripts": {

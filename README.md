@@ -1,6 +1,6 @@
 <h1 align="center">Recuv</h1>
 
-<p align="center">Recovers code you thought you lost.</p>
+<p align="center">Go back in time and recover any file you once edited in VSCode.</p>
 
 <details>
 <summary>Read the backstory behind recuv</summary>
@@ -43,7 +43,7 @@ VSCode introduced this fancy new feature called Local History. Essentially, it s
 
 Unfortunately, there is no way to view the history for deleted files and if you aren't careful, you can end up overwriting this history (which happened to me when I accidentally renamed a file).
 
-> `recuv` provides a cross-platform way for you to view, filter & restore any version of any file you edited in VSCode. Even the deleted ones.
+> `recuv` provides a cross-platform way for you to view, filter & restore any version of any file you edited in VSCode. Even the ones you deleted.
 
 ## How does it work?
 
@@ -98,6 +98,14 @@ No one should _only_ have `git` to lean on.
 Not a question but I agree. I am no `git` expert and I don't think I'll ever be. But even if I were, I'd have shot myself in the foot in some other really, really stupid way. `git` makes gits of us all, unfortunately.
 
 Having `recuv` in my toolbelt will at least provide me with a fallback.
+
+### I can do this in...
+
+Yes, I know. A bash wizard can probably do all of this in 1 line. This is just nicer and cross-platform.
+
+### Why not make a VSCode extension?
+
+There's no point in coupling 2 things that don't absolutely need to be coupled. Imagine the case where you couldn't access VSCode for some reason or you only had these history files without VSCode. `recuv` doesn't need VSCode nor should it. It can further be extended to add support for other editors and become even more useful. A VSCode extension can't do any of that.
 
 ## License
 
