@@ -1,4 +1,4 @@
-<h1 align="center">Recuv</h1>
+<h1 align="center">⛑️Recuv</h1>
 
 <p align="center">Go back in time and recover any file you once edited in VSCode.</p>
 
