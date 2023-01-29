@@ -89,7 +89,7 @@ yarn global add recuv
 ### Does it only work for VSCode?
 
 > If you edited it in VSCode, it can be recovered.
-> - Me, now.
+> — Me, right now.
 
 I am not sure if other editors support this or not (even via extensions) & if they do, I'd love to add support for them as well. Feel free to open a PR or an issue.
 
