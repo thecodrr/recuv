@@ -70,6 +70,12 @@ VSCode stores the whole Local History for all files on the filesystem at `$USER/
 npm i -g recuv
 ```
 
+Or if you prefer yarn:
+
+```
+yarn global add recuv
+```
+
 ### Usage
 
 `recuv` has no commands or arguments. Just run `recuv` and the rest will be obvious. Here's a GIF showing it in action:
